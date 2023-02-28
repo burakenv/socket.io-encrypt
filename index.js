@@ -12,16 +12,8 @@ module.exports = (secret) => (socket, next) => {
   const handlers = new WeakMap();
 
   const generateIV = (key) => {
-    const sha256 = crypto
-      .createHash("sha256")
-      .update(key)
-      .digest("hex")
-      .toString();
-    const md5 = crypto
-      .createHash("md5")
-      .update(sha256)
-      .digest("hex")
-      .toString();
+    const sha256 = CryptoJS.SHA256(key).toString();
+    const md5 = CryptoJS.MD5(sha256).toString();
     const iv = md5.substring(0, 16);
     return CryptoJS.enc.Hex.parse(iv);
   };
