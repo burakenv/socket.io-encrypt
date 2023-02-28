@@ -11,26 +11,40 @@ const reservedEvents = require("./reserved-events");
 module.exports = (secret) => (socket, next) => {
   const handlers = new WeakMap();
 
-  const generateIV = (key) => {
-    const sha256 = CryptoJS.SHA256(key).toString();
-    const md5 = CryptoJS.MD5(sha256).toString();
-    const iv = md5.substring(0, 16);
-    return CryptoJS.enc.Hex.parse(iv);
-  };
-
-  const ENC_KEY = CryptoJS.enc.Hex.parse(secret);
-  const IV = generateIV(secret);
-
-  const encrypt = (val) => {
-    return CryptoJS.AES.encrypt(val, ENC_KEY, {
-      iv: IV,
-    }).toString();
+  const encrypt = (args) => {
+    const encrypted = [];
+    let ack;
+    for (let i = 0; i < args.length; i++) {
+      const arg = args[i];
+      if (i === args.length - 1 && typeof arg === "function") {
+        ack = arg;
+      } else {
+        encrypted.push(
+          CryptoJS.AES.encrypt(JSON.stringify(arg), secret).toString()
+        );
+      }
+    }
+    if (!encrypted.length) return args;
+    args = [{ encrypted }];
+    if (ack) args.push(ack);
+    console.log("encrypted", args);
+    return args;
   };
 
   const decrypt = (encrypted) => {
-    return CryptoJS.AES.decrypt(encrypted, key, {
-      iv: IV,
-    }).toString(CryptoJS.enc.Utf8);
+    try {
+      return encrypted.map((item) =>
+        JSON.parse(
+          CryptoJS.AES.decrypt(item, secret).toString(CryptoJS.enc.Utf8)
+        )
+      );
+    } catch (e) {
+      const error = new Error(
+        `Couldn't decrypt. Wrong secret used on client or invalid data sent. (${e.message})`
+      );
+      error.code = "ERR_DECRYPTION_ERROR";
+      throw error;
+    }
   };
 
   socket[emit] = socket.emit;
@@ -41,7 +55,7 @@ module.exports = (secret) => (socket, next) => {
 
   socket.emit = (event, ...args) => {
     if (reservedEvents.includes(event)) return socket[emit](event, ...args);
-
+    console.log("encrypt", args);
     return socket[emit](event, ...encrypt(args));
   };
 
@@ -51,6 +65,7 @@ module.exports = (secret) => (socket, next) => {
     const newHandler = function (...args) {
       if (args[0] && args[0].encrypted) {
         try {
+          console.log("decrypt", args);
           args = decrypt(args[0].encrypted);
         } catch (error) {
           socket[emit]("error", error);
