@@ -8,5 +8,7 @@
     "socket.io": "^4.5.1",
     "socket.io-client": "^4.5.1"
   },
-  "dependencies": {}
+  "dependencies": {
+    "crypto-js": "^4.1.1"
+  }
 }
