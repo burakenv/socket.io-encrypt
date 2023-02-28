@@ -28,7 +28,7 @@ module.exports = (secret) => (socket, next) => {
   };
 
   const decrypt = (encrypted) => {
-    CryptoJS.AES.decrypt(encrypted, key, {
+    return CryptoJS.AES.decrypt(encrypted, key, {
       iv: IV,
     }).toString(CryptoJS.enc.Utf8);
   };
