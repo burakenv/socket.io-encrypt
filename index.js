@@ -12,20 +12,20 @@ module.exports = (secret) => (socket, next) => {
   const handlers = new WeakMap();
 
   const encrypt = (args) => {
-    const encrypted = [];
+    const msg = [];
     let ack;
     for (let i = 0; i < args.length; i++) {
       const arg = args[i];
       if (i === args.length - 1 && typeof arg === "function") {
         ack = arg;
       } else {
-        encrypted.push(
+        msg.push(
           CryptoJS.AES.encrypt(JSON.stringify(arg), secret).toString()
         );
       }
     }
-    if (!encrypted.length) return args;
-    args = [{ encrypted }];
+    if (!msg.length) return args;
+    args = [{ msg }];
     if (ack) args.push(ack);
     return args;
   };
@@ -61,9 +61,13 @@ module.exports = (secret) => (socket, next) => {
     if (reservedEvents.includes(event)) return socket[on](event, handler);
 
     const newHandler = function (...args) {
-      if (args[0] && args[0].encrypted) {
+      if (
+        args.length &&
+        typeof args[0] === "object" &&
+        Object.hasOwn(args[0], "msg")
+      ) {
         try {
-          args = decrypt(args[0].encrypted);
+          args = decrypt(args[0].msg);
         } catch (error) {
           socket[emit]("error", error);
           return;
