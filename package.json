@@ -1,6 +1,6 @@
 {
   "name": "socket.io-encrypt",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Send encrypted and decrypt messages",
   "main": "index.js",
   "repository": "burakenv/socket.io-encrypt",
