@@ -27,7 +27,6 @@ module.exports = (secret) => (socket, next) => {
     if (!encrypted.length) return args;
     args = [{ encrypted }];
     if (ack) args.push(ack);
-    console.log("encrypted", args);
     return args;
   };
 
@@ -55,7 +54,6 @@ module.exports = (secret) => (socket, next) => {
 
   socket.emit = (event, ...args) => {
     if (reservedEvents.includes(event)) return socket[emit](event, ...args);
-    console.log("encrypt", args);
     return socket[emit](event, ...encrypt(args));
   };
 
@@ -65,7 +63,6 @@ module.exports = (secret) => (socket, next) => {
     const newHandler = function (...args) {
       if (args[0] && args[0].encrypted) {
         try {
-          console.log("decrypt", args);
           args = decrypt(args[0].encrypted);
         } catch (error) {
           socket[emit]("error", error);
