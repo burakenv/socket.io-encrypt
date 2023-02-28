@@ -1,37 +1,34 @@
-const Cryptr = require('cryptr');
+const crypto = require("crypto");
 const { emit, on, off, removeEventListener, removeListener } = require('./symbol');
 const reservedEvents = require('./reserved-events');
 
 module.exports = (secret) => (socket, next) => {
   const handlers = new WeakMap();
-  const cryptr = new Cryptr(secret);
 
-  const encrypt = args => {
-    const encrypted = [];
-    let ack;
-    for (let i = 0; i < args.length; i++) {
-      const arg = args[i];
-      if (i === args.length - 1 && typeof arg === 'function') {
-        ack = arg;
-      } else {
-        encrypted.push(cryptr.encrypt(JSON.stringify(arg)));
-      }
-
-    }
-    if (!encrypted.length) return args;
-    args = [{ encrypted }];
-    if (ack) args.push(ack);
-    return args;
+  const generateIV = (key) => {
+    const sha256 = crypto
+      .createHash("sha256")
+      .update(key)
+      .digest("hex")
+      .toString();
+    const md5 = crypto.createHash("md5").update(sha256).digest("hex").toString();
+    return md5.substring(0, 16);
   };
 
-  const decrypt = encrypted => {
-    try {
-      return encrypted.map(a => JSON.parse(cryptr.decrypt(a)));
-    } catch (e) {
-      const error = new Error(`Couldn't decrypt. Wrong secret used on client or invalid data sent. (${e.message})`);
-      error.code = 'ERR_DECRYPTION_ERROR';
-      throw error;
-    }
+  const ENC_KEY = secret;
+  const IV = generateIV(secret);
+
+  const encrypt = (val) => {
+    let cipher = crypto.createCipheriv("aes-256-cbc", ENC_KEY, IV);
+    let encrypted = cipher.update(val, "utf8", "base64");
+    encrypted += cipher.final("base64");
+    return encrypted;
+  };
+
+  const decrypt = (encrypted) => {
+    let decipher = crypto.createDecipheriv("aes-256-cbc", ENC_KEY, IV);
+    let decrypted = decipher.update(encrypted, "base64", "utf8");
+    return decrypted + decipher.final("utf8");
   };
 
   socket[emit] = socket.emit;
